@@ -8,7 +8,6 @@ const userSchema = mongoose.Schema(
     password: { type: "String", required: true },
     pic: {
       type: "String",
-      required: true,
       default:
         "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
     },
@@ -20,6 +19,7 @@ const userSchema = mongoose.Schema(
   },
   { timestaps: true }
 );
+
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
