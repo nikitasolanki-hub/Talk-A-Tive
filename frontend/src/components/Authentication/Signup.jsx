@@ -1,18 +1,25 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Box, Button, Input, Stack, Text, Image } from "@chakra-ui/react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaCloudUploadAlt } from "react-icons/fa";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const DEFAULT_PROFILE_PIC =
+  "https://res.cloudinary.com/dq17pkuwg/image/upload/v1782277226/20250619_151950_ef57eu.jpg";
+
+const CLOUDINARY_CLOUD_NAME = "dq17pkuwg";
+const CLOUDINARY_UPLOAD_PRESET = "chat-app";
+
 const Signup = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    pic: "",
+    pic: DEFAULT_PROFILE_PIC,
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -44,11 +51,10 @@ const Signup = () => {
 
       const imageData = new FormData();
       imageData.append("file", file);
-      imageData.append("upload_preset", "chat-app");
-      imageData.append("cloud_name", "piyushproj");
+      imageData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
       const response = await fetch(
-        "https://api.cloudinary.com/v1_1/piyushproj/image/upload",
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
           method: "POST",
           body: imageData,
@@ -57,19 +63,18 @@ const Signup = () => {
 
       const data = await response.json();
 
-      if (!data.url) {
-        throw new Error("Image upload failed");
+      if (!data.secure_url) {
+        throw new Error(data.error?.message || "Image upload failed");
       }
 
       setFormData((prev) => ({
         ...prev,
-        pic: data.url,
+        pic: data.secure_url,
       }));
-
+    } catch (error) {
+      setMessage(error.message || "Image upload failed");
+    } finally {
       setPicLoading(false);
-    } catch {
-      setPicLoading(false);
-      setMessage("Image upload failed");
     }
   };
 
@@ -99,13 +104,13 @@ const Signup = () => {
 
       localStorage.setItem("userInfo", JSON.stringify(data));
 
-      setLoading(false);
       navigate("/chats");
     } catch (error) {
-      setLoading(false);
       setMessage(
         error.response?.data?.message || "Something went wrong during signup"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,6 +132,8 @@ const Signup = () => {
             placeholder="Enter your name"
             value={formData.name}
             onChange={handleChange}
+            color="black"
+            _placeholder={{ color: "gray.500" }}
           />
         </Box>
 
@@ -140,6 +147,8 @@ const Signup = () => {
             placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
+            color="black"
+            _placeholder={{ color: "gray.500" }}
           />
         </Box>
 
@@ -155,6 +164,8 @@ const Signup = () => {
               placeholder="Enter password"
               value={formData.password}
               onChange={handleChange}
+              color="black"
+              _placeholder={{ color: "gray.500" }}
               pr="45px"
             />
 
@@ -207,11 +218,44 @@ const Signup = () => {
           </Text>
 
           <Input
+            ref={fileInputRef}
             type="file"
             accept="image/png, image/jpeg"
-            p={1}
+            display="none"
+            color="black"
+            _placeholder={{ color: "gray.500" }}
             onChange={(e) => uploadPicture(e.target.files[0])}
           />
+
+          <Box
+            border="2px dashed"
+            borderColor="blue.300"
+            borderRadius="md"
+            p={4}
+            textAlign="center"
+            cursor="pointer"
+            bg="blue.50"
+            _hover={{ bg: "blue.100", borderColor: "blue.500" }}
+            onClick={() => fileInputRef.current.click()}
+          >
+            <Box
+              display="flex"
+              justifyContent="center"
+              color="blue.600"
+              fontSize="28px"
+              mb={2}
+            >
+              <FaCloudUploadAlt />
+            </Box>
+
+            <Text color="blue.700" fontWeight="medium">
+              Click to upload profile picture
+            </Text>
+
+            <Text color="gray.500" fontSize="sm">
+              PNG or JPG only
+            </Text>
+          </Box>
 
           {picLoading && (
             <Text mt={2} color="blue.600" fontSize="sm">
@@ -219,22 +263,29 @@ const Signup = () => {
             </Text>
           )}
 
-          {formData.pic && (
-            <Box mt={3} display="flex" alignItems="center" gap={3}>
-              <Image
-                src={formData.pic}
-                alt="Profile Preview"
-                boxSize="55px"
-                borderRadius="full"
-                objectFit="cover"
-                border="2px solid"
-                borderColor="blue.200"
-              />
-              <Text color="green.600" fontSize="sm" fontWeight="medium">
-                Image uploaded successfully
-              </Text>
-            </Box>
-          )}
+          <Box mt={3} display="flex" alignItems="center" gap={3}>
+            <Image
+              src={formData.pic}
+              alt="Profile Preview"
+              boxSize="55px"
+              borderRadius="full"
+              objectFit="cover"
+              border="2px solid"
+              borderColor="blue.200"
+            />
+
+            <Text
+              color={
+                formData.pic === DEFAULT_PROFILE_PIC ? "blue.600" : "green.600"
+              }
+              fontSize="sm"
+              fontWeight="medium"
+            >
+              {formData.pic === DEFAULT_PROFILE_PIC
+                ? "Default image will be used"
+                : "Image uploaded successfully"}
+            </Text>
+          </Box>
         </Box>
 
         <Button

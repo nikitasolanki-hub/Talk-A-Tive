@@ -75,6 +75,8 @@ const Login = () => {
             type="email"
             placeholder="Enter your email"
             value={formData.email}
+            color="black"
+            _placeholder={{ color: "gray.500" }}
             onChange={handleChange}
           />
         </Box>
@@ -91,6 +93,8 @@ const Login = () => {
               placeholder="Enter password"
               value={formData.password}
               onChange={handleChange}
+              color="black"
+              _placeholder={{ color: "gray.500" }}
               pr="45px"
             />
 
@@ -115,6 +119,15 @@ const Login = () => {
           disabled={loading}
         >
           {loading ? "Logging in..." : "Login"}
+        </Button>
+
+        <Button
+          colorPalette="gray"
+          width="100%"
+          onClick={fillGuestCredentials}
+          variant="outline"
+        >
+          Guest Login
         </Button>
       </Stack>
     </Box>
