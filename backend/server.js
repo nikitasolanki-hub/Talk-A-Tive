@@ -17,7 +17,6 @@ connectDB();
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:5173",
   "https://talk-a-tive-amber.vercel.app",
   process.env.FRONTEND_URL,
 ];
