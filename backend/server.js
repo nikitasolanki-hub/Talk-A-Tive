@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
+
 require("colors");
 
 const userRouter = require("./routes/userRoutes");
@@ -25,17 +26,20 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error(`Not allowed by CORS: ${origin}`));
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+app.options("*", cors());
 
 app.use(express.json());
 
@@ -47,26 +51,6 @@ app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRoutes);
 
-// -------------------------- deployment --------------------------
-
-const __dirnameRoot = path.resolve();
-
-if (process.env.NODE_ENV === "production") {
-  const frontendPath = path.join(__dirnameRoot, "frontend", "dist");
-
-  app.use(express.static(frontendPath));
-
-  app.use((req, res, next) => {
-    if (req.originalUrl.startsWith("/api")) {
-      return next();
-    }
-
-    res.sendFile(path.join(frontendPath, "index.html"));
-  });
-}
-
-// -------------------------- deployment --------------------------
-
 app.use(notFound);
 app.use(errorHandler);
 
@@ -75,6 +59,8 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`Server Started on Port ${PORT}`.yellow.bold);
 });
+
+// ---------------- SOCKET.IO ----------------
 
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
@@ -86,59 +72,30 @@ const io = require("socket.io")(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
+  console.log("Connected to socket.io");
 
   socket.on("setup", (userData) => {
-    if (!userData?._id) return;
-
     socket.join(userData._id);
-    console.log("User joined personal room:", userData._id);
-
     socket.emit("connected");
   });
 
   socket.on("join chat", (room) => {
-    if (!room) return;
-
     socket.join(room);
-    console.log("User joined chat room:", room);
+    console.log("User Joined Room:", room);
   });
 
-  socket.on("typing", (room) => {
-    if (!room) return;
-
-    socket.in(room).emit("typing");
-  });
-
-  socket.on("stop typing", (room) => {
-    if (!room) return;
-
-    socket.in(room).emit("stop typing");
-  });
+  socket.on("typing", (room) => socket.in(room).emit("typing"));
+  socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
 
   socket.on("new message", (newMessageReceived) => {
-    const chat = newMessageReceived?.chat;
+    const chat = newMessageReceived.chat;
 
-    if (!chat?.users) {
-      console.log("chat.users not defined");
-      return;
-    }
+    if (!chat.users) return console.log("chat.users not defined");
 
-    chat.users.forEach((chatUser) => {
-      if (!chatUser?._id) return;
+    chat.users.forEach((user) => {
+      if (user._id === newMessageReceived.sender._id) return;
 
-      if (
-        chatUser._id.toString() ===
-        newMessageReceived.sender._id.toString()
-      ) {
-        return;
-      }
-
-      socket.in(chatUser._id).emit("message received", newMessageReceived);
+      socket.in(user._id).emit("message received", newMessageReceived);
     });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Socket disconnected:", socket.id);
   });
 });

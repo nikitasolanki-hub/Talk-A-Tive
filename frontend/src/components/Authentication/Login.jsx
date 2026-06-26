@@ -5,8 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ;
-
+  import.meta.env.VITE_API_BASE_URL || "https://talk-a-tive-8412.onrender.com";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -39,16 +38,30 @@ const Login = () => {
       setLoading(true);
       setMessage("");
 
-      const { data } = await axios.post(`${API_BASE_URL}/api/user/login`, {
-        email,
-        password,
-      });
+      console.log("LOGIN API URL:", `${API_BASE_URL}/api/user/login`);
+
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      };
+
+      const { data } = await axios.post(
+        `${API_BASE_URL}/api/user/login`,
+        {
+          email,
+          password,
+        },
+        config
+      );
+
       localStorage.setItem("userInfo", JSON.stringify(data));
 
       setLoading(false);
       navigate("/chats");
     } catch (error) {
       setLoading(false);
+      console.log("LOGIN ERROR:", error?.response?.data || error.message);
       setMessage(error.response?.data?.message || "Invalid email or password");
     }
   };
