@@ -49,6 +49,8 @@ const SideDrawer = () => {
     setChats,
   } = ChatState();
 
+  const safeNotifications = Array.isArray(notification) ? notification : [];
+
   const logoutHandler = () => {
     localStorage.removeItem("userInfo");
     navigate("/");
@@ -158,7 +160,7 @@ const SideDrawer = () => {
               <Button variant="ghost" position="relative">
                 <FaBell />
 
-                {notification?.length > 0 && (
+                {safeNotifications.length > 0 && (
                   <Badge
                     position="absolute"
                     top="-1"
@@ -167,7 +169,7 @@ const SideDrawer = () => {
                     borderRadius="full"
                     fontSize="xs"
                   >
-                    {notification.length}
+                    {safeNotifications.length}
                   </Badge>
                 )}
               </Button>
@@ -176,31 +178,38 @@ const SideDrawer = () => {
             <Portal>
               <Menu.Positioner>
                 <Menu.Content>
-                  {!notification?.length && (
+                  {safeNotifications.length === 0 ? (
                     <Menu.Item value="no-notification">
                       No New Messages
                     </Menu.Item>
-                  )}
+                  ) : (
+                    safeNotifications.map((notif) => (
+                      <Menu.Item
+                        key={notif._id}
+                        value={notif._id}
+                        onClick={() => {
+                          if (!notif?.chat) return;
 
-                  {notification?.map((notif) => (
-                    <Menu.Item
-                      key={notif._id}
-                      value={notif._id}
-                      onClick={() => {
-                        setSelectedChat(notif.chat);
-                        setNotification(
-                          notification.filter((n) => n !== notif)
-                        );
-                      }}
-                    >
-                      {notif.chat.isGroupChat
-                        ? `New Message in ${notif.chat.chatName}`
-                        : `New Message from ${getSender(
-                            user,
-                            notif.chat.users
-                          )}`}
-                    </Menu.Item>
-                  ))}
+                          setSelectedChat(notif.chat);
+
+                          setNotification((prevNotifications = []) =>
+                            prevNotifications.filter(
+                              (n) => n._id !== notif._id
+                            )
+                          );
+                        }}
+                      >
+                        {notif?.chat?.isGroupChat
+                          ? `New Message in ${notif.chat.chatName}`
+                          : notif?.chat?.users
+                          ? `New Message from ${getSender(
+                              user,
+                              notif.chat.users
+                            )}`
+                          : "New Message"}
+                      </Menu.Item>
+                    ))
+                  )}
                 </Menu.Content>
               </Menu.Positioner>
             </Portal>

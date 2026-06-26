@@ -12,12 +12,15 @@ const ChatBox = ({ fetchAgain, setFetchAgain }) => {
       flexDirection="column"
       p={3}
       bg="white"
-      w={{ base: "100%", md: "68%" }}
+      width={{ base: "100%", md: "68%" }}
       borderRadius="lg"
       borderWidth="1px"
-      h="100%"
+      height="100%"
     >
-      <SingleChat fetchAgain={fetchAgain} setFetchAgain={setFetchAgain} />
+      <SingleChat
+        fetchAgain={fetchAgain}
+        setFetchAgain={setFetchAgain}
+      />
     </Box>
   );
 };

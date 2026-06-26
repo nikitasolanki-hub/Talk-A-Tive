@@ -2,17 +2,21 @@ import { useState } from "react";
 import {
   Box,
   Button,
+  CloseButton,
   Dialog,
+  Field,
   Input,
   Portal,
-  Text,
   Spinner,
+  Text,
 } from "@chakra-ui/react";
 import axios from "axios";
 
 import { ChatState } from "../../Context/ChatProvider";
 import UserBadgeItem from "../userAvatar/UserBadgeItem";
 import UserListItem from "../userAvatar/UserListItem";
+
+const API_BASE_URL = "http://localhost:5000";
 
 const GroupChatModal = ({ children }) => {
   const [open, setOpen] = useState(false);
@@ -26,22 +30,27 @@ const GroupChatModal = ({ children }) => {
 
   const { user, chats, setChats } = ChatState();
 
-  const handleGroup = (userToAdd) => {
-    const alreadyAdded = selectedUsers.some((u) => u._id === userToAdd._id);
+  const getAuthConfig = () => ({
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${user?.token}`,
+    },
+  });
 
-    if (alreadyAdded) {
-      setMessage("User already added");
-      return;
-    }
-
-    setSelectedUsers((prev) => [...prev, userToAdd]);
+  const resetModal = () => {
+    setGroupChatName("");
+    setSelectedUsers([]);
+    setSearch("");
+    setSearchResult([]);
     setMessage("");
   };
 
-  const handleDelete = (userToDelete) => {
-    setSelectedUsers((prev) =>
-      prev.filter((selectedUser) => selectedUser._id !== userToDelete._id)
-    );
+  const handleOpenChange = (details) => {
+    setOpen(details.open);
+
+    if (!details.open) {
+      resetModal();
+    }
   };
 
   const handleSearch = async (query) => {
@@ -56,23 +65,32 @@ const GroupChatModal = ({ children }) => {
       setLoading(true);
       setMessage("");
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
       const { data } = await axios.get(
-        `http://localhost:5000/api/user?search=${query}`,
-        config
+        `${API_BASE_URL}/api/user?search=${query}`,
+        getAuthConfig()
       );
 
       setSearchResult(data);
-    } catch  {
-      setMessage("Failed to load search results");
+    } catch (error) {
+      console.log("SEARCH USER ERROR:", error?.response?.data || error.message);
+      setMessage("Failed to load users");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGroupUser = (userToAdd) => {
+    if (selectedUsers.find((u) => u._id === userToAdd._id)) {
+      setMessage("User already selected");
+      return;
+    }
+
+    setSelectedUsers([...selectedUsers, userToAdd]);
+    setMessage("");
+  };
+
+  const handleDeleteUser = (userToDelete) => {
+    setSelectedUsers(selectedUsers.filter((u) => u._id !== userToDelete._id));
   };
 
   const handleSubmit = async () => {
@@ -82,7 +100,7 @@ const GroupChatModal = ({ children }) => {
     }
 
     if (selectedUsers.length < 2) {
-      setMessage("Please add at least 2 users");
+      setMessage("Please select at least 2 users");
       return;
     }
 
@@ -90,35 +108,21 @@ const GroupChatModal = ({ children }) => {
       setCreating(true);
       setMessage("");
 
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
       const { data } = await axios.post(
-        "http://localhost:5000/api/chat/group",
+        `${API_BASE_URL}/api/chat/group`,
         {
-          name: groupChatName,
+          name: groupChatName.trim(),
           users: JSON.stringify(selectedUsers.map((u) => u._id)),
         },
-        config
+        getAuthConfig()
       );
 
       setChats([data, ...(chats || [])]);
-
-      setGroupChatName("");
-      setSelectedUsers([]);
-      setSearch("");
-      setSearchResult([]);
       setOpen(false);
+      resetModal();
     } catch (error) {
-      setMessage(
-        error.response?.data?.message ||
-          error.response?.data ||
-          "Failed to create group chat"
-      );
+      console.log("CREATE GROUP ERROR:", error?.response?.data || error.message);
+      setMessage(error?.response?.data?.message || "Failed to create group");
     } finally {
       setCreating(false);
     }
@@ -126,105 +130,92 @@ const GroupChatModal = ({ children }) => {
 
   return (
     <>
-      <Box as="span" cursor="pointer" onClick={() => setOpen(true)}>
+      <Box
+        as="span"
+        display="inline-flex"
+        cursor="pointer"
+        onClick={() => setOpen(true)}
+      >
         {children}
       </Box>
 
-      <Dialog.Root open={open} onOpenChange={(details) => setOpen(details.open)}>
+      <Dialog.Root open={open} onOpenChange={handleOpenChange}>
         <Portal>
-          <Dialog.Backdrop bg="blackAlpha.600" />
+          <Dialog.Backdrop />
 
           <Dialog.Positioner>
-            <Dialog.Content maxW="lg" bg="white" borderRadius="xl">
-              <Dialog.Header
-                display="flex"
-                justifyContent="center"
-                borderBottomWidth="1px"
-                borderColor="blue.100"
-              >
+            <Dialog.Content>
+              <Dialog.Header>
                 <Dialog.Title
-                  fontSize={{ base: "2xl", md: "3xl" }}
+                  fontSize="30px"
                   fontFamily="Work sans"
-                  color="blue.700"
-                  fontWeight="bold"
+                  textAlign="center"
+                  width="100%"
                 >
                   Create Group Chat
                 </Dialog.Title>
+
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
               </Dialog.Header>
 
               <Dialog.Body>
-                <Box display="flex" flexDirection="column" gap={4}>
-                  {message && (
-                    <Text color="red.500" fontSize="sm" fontWeight="medium">
-                      {message}
-                    </Text>
-                  )}
+                {message && (
+                  <Text color="red.500" fontSize="sm" mb={3}>
+                    {message}
+                  </Text>
+                )}
 
-                  <Box>
-                    <Text mb={1} color="blue.700" fontWeight="medium">
-                      Group Name
-                    </Text>
-                    <Input
-                      placeholder="Enter group chat name"
-                      value={groupChatName}
-                      onChange={(e) => setGroupChatName(e.target.value)}
-                      color="black"
-                      _placeholder={{ color: "gray.500" }}
+                <Field.Root mb={3}>
+                  <Input
+                    placeholder="Group chat name"
+                    value={groupChatName}
+                    onChange={(e) => setGroupChatName(e.target.value)}
+                  />
+                </Field.Root>
+
+                <Field.Root mb={3}>
+                  <Input
+                    placeholder="Search users"
+                    value={search}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                </Field.Root>
+
+                <Box display="flex" flexWrap="wrap" width="100%" mb={3}>
+                  {selectedUsers.map((selectedUser) => (
+                    <UserBadgeItem
+                      key={selectedUser._id}
+                      user={selectedUser}
+                      handleFunction={() => handleDeleteUser(selectedUser)}
                     />
-                  </Box>
-
-                  <Box>
-                    <Text mb={1} color="blue.700" fontWeight="medium">
-                      Add Users
-                    </Text>
-                    <Input
-                      placeholder="Search users by name or email"
-                      value={search}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      color="black"
-                      _placeholder={{ color: "gray.500" }}
-                    />
-                  </Box>
-
-                  <Box display="flex" flexWrap="wrap" gap={2}>
-                    {selectedUsers.map((selectedUser) => (
-                      <UserBadgeItem
-                        key={selectedUser._id}
-                        user={selectedUser}
-                        handleFunction={() => handleDelete(selectedUser)}
-                      />
-                    ))}
-                  </Box>
-
-                  <Box>
-                    {loading ? (
-                      <Box display="flex" justifyContent="center" py={4}>
-                        <Spinner color="blue.500" />
-                      </Box>
-                    ) : (
-                      searchResult.slice(0, 4).map((searchedUser) => (
-                        <UserListItem
-                          key={searchedUser._id}
-                          user={searchedUser}
-                          handleFunction={() => handleGroup(searchedUser)}
-                        />
-                      ))
-                    )}
-                  </Box>
+                  ))}
                 </Box>
+
+                {loading ? (
+                  <Spinner />
+                ) : (
+                  searchResult?.slice(0, 4).map((searchedUser) => (
+                    <UserListItem
+                      key={searchedUser._id}
+                      user={searchedUser}
+                      handleFunction={() => handleGroupUser(searchedUser)}
+                    />
+                  ))
+                )}
               </Dialog.Body>
 
-              <Dialog.Footer borderTopWidth="1px" borderColor="blue.100">
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-
+              <Dialog.Footer>
                 <Button
-                  colorPalette="blue"
+                  bg="blue.800"
+                  color="white"
+                  _hover={{ bg: "blue.900" }}
+                  _active={{ bg: "blue.950" }}
+                  loading={creating}
                   onClick={handleSubmit}
-                  disabled={creating}
                 >
-                  {creating ? "Creating..." : "Create Chat"}
+                  Create Chat
                 </Button>
               </Dialog.Footer>
             </Dialog.Content>

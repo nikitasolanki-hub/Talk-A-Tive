@@ -1,4 +1,6 @@
-//git hostory se env delete krni hai 
+// git hostory se env delete krni hai 
 // question ==>> if suppose i had push env files into github because i am not using gitigone file , how to remove that from entire git history 
 // nodemodule 
 // openAI connect to Github 
+// commit histroy delete
+// merge branch kri or vo production or merge hogai but vo brnach me bug tha deploy ke baad me pata me chla to rollback kese kre(github, vaps kese krege deploy)

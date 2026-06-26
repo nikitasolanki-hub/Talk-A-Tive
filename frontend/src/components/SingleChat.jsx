@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, IconButton, Input, Spinner, Text } from "@chakra-ui/react";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaSmile } from "react-icons/fa";
 import { IoSend } from "react-icons/io5";
 import axios from "axios";
 import { io } from "socket.io-client";
 import Lottie from "lottie-react";
+import EmojiPicker from "emoji-picker-react";
 
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import ProfileModal from "./miscellaneous/ProfileModal";
@@ -16,9 +17,6 @@ import animationData from "../animations/typing.json";
 const ENDPOINT = "http://localhost:5000";
 const API_BASE_URL = "http://localhost:5000";
 
-let socket;
-let selectedChatCompare;
-
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,22 +26,42 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [typing, setTyping] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [messageError, setMessageError] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  const {
-    selectedChat,
-    setSelectedChat,
-    user,
-    notification,
-    setNotification,
-  } = ChatState();
+  const socketRef = useRef(null);
+  const selectedChatCompareRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
-  const config = useMemo(() => {
-    return {
+  const { selectedChat, setSelectedChat, user, setNotification } = ChatState();
+
+  const authConfig = useMemo(
+    () => ({
       headers: {
         Authorization: `Bearer ${user?.token}`,
       },
-    };
-  }, [user?.token]);
+    }),
+    [user?.token]
+  );
+
+  const handleEmojiClick = (emojiData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+
+    if (!socketConnected || !selectedChat?._id || !socketRef.current) return;
+
+    if (!typing) {
+      setTyping(true);
+      socketRef.current.emit("typing", selectedChat._id);
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit("stop typing", selectedChat._id);
+      setTyping(false);
+    }, 3000);
+  };
 
   const fetchMessages = async () => {
     if (!selectedChat?._id || !user?.token) return;
@@ -54,13 +72,13 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
       const { data } = await axios.get(
         `${API_BASE_URL}/api/message/${selectedChat._id}`,
-        config
+        authConfig
       );
 
       setMessages(data);
 
-      if (socket) {
-        socket.emit("join chat", selectedChat._id);
+      if (socketRef.current) {
+        socketRef.current.emit("join chat", selectedChat._id);
       }
     } catch (error) {
       setMessageError(
@@ -74,6 +92,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     if (!selectedChat?._id) return;
+
     if (!user?.token) {
       setMessageError("User token missing. Please login again.");
       return;
@@ -85,9 +104,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       setSendLoading(true);
       setMessageError("");
       setNewMessage("");
+      setShowEmojiPicker(false);
+      setTyping(false);
 
-      if (socket) {
-        socket.emit("stop typing", selectedChat._id);
+      if (socketRef.current) {
+        socketRef.current.emit("stop typing", selectedChat._id);
       }
 
       const { data } = await axios.post(
@@ -104,11 +125,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
         }
       );
 
-      if (socket) {
-        socket.emit("new message", data);
+      if (socketRef.current) {
+        socketRef.current.emit("new message", data);
       }
 
-      setMessages((prev) => [...prev, data]);
+      setMessages((prevMessages) => [...prevMessages, data]);
     } catch (error) {
       setNewMessage(messageToSend);
       setMessageError(
@@ -126,82 +147,123 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     }
   };
 
-  const typingHandler = (e) => {
-    setNewMessage(e.target.value);
+  const typingHandler = (event) => {
+    const value = event.target.value;
+    setNewMessage(value);
 
-    if (!socketConnected || !selectedChat?._id || !socket) return;
+    if (!socketConnected || !selectedChat?._id || !socketRef.current) return;
 
     if (!typing) {
       setTyping(true);
-      socket.emit("typing", selectedChat._id);
+      socketRef.current.emit("typing", selectedChat._id);
     }
 
-    const lastTypingTime = new Date().getTime();
-    const timerLength = 3000;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
 
-    setTimeout(() => {
-      const timeNow = new Date().getTime();
-      const timeDiff = timeNow - lastTypingTime;
-
-      if (timeDiff >= timerLength) {
-        socket.emit("stop typing", selectedChat._id);
-        setTyping(false);
-      }
-    }, timerLength);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit("stop typing", selectedChat._id);
+      setTyping(false);
+    }, 3000);
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) {
+      console.log("NO USER FOUND FOR SOCKET");
+      return;
+    }
 
-    socket = io(ENDPOINT);
-    socket.emit("setup", user);
+    console.log("TRYING SOCKET CONNECTION FOR USER:", user._id);
 
-    socket.on("connected", () => setSocketConnected(true));
-    socket.on("typing", () => setIsTyping(true));
-    socket.on("stop typing", () => setIsTyping(false));
+    socketRef.current = io(ENDPOINT, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
+    });
+
+    socketRef.current.on("connect", () => {
+      console.log("FRONTEND SOCKET CONNECTED:", socketRef.current.id);
+
+      socketRef.current.emit("setup", user);
+    });
+
+    socketRef.current.on("connected", () => {
+      console.log("SOCKET SETUP COMPLETED");
+      setSocketConnected(true);
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      console.log("FRONTEND SOCKET CONNECT ERROR:", error.message);
+    });
+
+    socketRef.current.on("disconnect", (reason) => {
+      console.log("FRONTEND SOCKET DISCONNECTED:", reason);
+      setSocketConnected(false);
+    });
+
+    socketRef.current.on("typing", () => setIsTyping(true));
+    socketRef.current.on("stop typing", () => setIsTyping(false));
 
     return () => {
-      socket.off("connected");
-      socket.off("typing");
-      socket.off("stop typing");
-      socket.disconnect();
+      socketRef.current?.off("connect");
+      socketRef.current?.off("connected");
+      socketRef.current?.off("connect_error");
+      socketRef.current?.off("disconnect");
+      socketRef.current?.off("typing");
+      socketRef.current?.off("stop typing");
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setSocketConnected(false);
     };
-  }, [user]);
+  }, [user?._id]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMessages();
-    selectedChatCompare = selectedChat;
+    selectedChatCompareRef.current = selectedChat;
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socketConnected || !socketRef.current) return;
 
     const handleMessageReceived = (newMessageReceived) => {
-      if (
-        !selectedChatCompare ||
-        selectedChatCompare._id !== newMessageReceived.chat._id
-      ) {
-        const alreadyNotified = notification.some(
-          (notif) => notif._id === newMessageReceived._id
-        );
+      if (!newMessageReceived?.chat?._id) return;
 
-        if (!alreadyNotified) {
-          setNotification([newMessageReceived, ...notification]);
-          setFetchAgain?.(!fetchAgain);
-        }
+      const currentChat = selectedChatCompareRef.current;
+
+      if (!currentChat || currentChat._id !== newMessageReceived.chat._id) {
+        setNotification((prevNotifications = []) => {
+          const alreadyExists = prevNotifications.some(
+            (notif) => notif._id === newMessageReceived._id
+          );
+
+          if (alreadyExists) return prevNotifications;
+
+          return [newMessageReceived, ...prevNotifications];
+        });
+
+        setFetchAgain?.((prev) => !prev);
       } else {
-        setMessages((prev) => [...prev, newMessageReceived]);
+        setMessages((prevMessages) => [...prevMessages, newMessageReceived]);
       }
     };
 
-    socket.on("message received", handleMessageReceived);
+    socketRef.current.on("message received", handleMessageReceived);
 
     return () => {
-      socket.off("message received", handleMessageReceived);
+      socketRef.current?.off("message received", handleMessageReceived);
     };
-  }, [notification, setNotification, fetchAgain, setFetchAgain]);
+  }, [socketConnected, setNotification, setFetchAgain]);
 
   return (
     <>
@@ -230,6 +292,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               fontFamily="Work sans"
               fontWeight="bold"
               color="black"
+              textAlign="center"
             >
               {!selectedChat.isGroupChat
                 ? getSender(user, selectedChat.users)
@@ -281,11 +344,32 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
             {isTyping && (
               <Box width="70px" mb={2}>
-                <Lottie animationData={animationData} loop autoplay />
+                <Lottie animationData={animationData} loop={true} autoplay={true} />
               </Box>
             )}
 
-            <Box display="flex" alignItems="center" gap={2} mt={3}>
+            <Box display="flex" alignItems="center" gap={2} mt={3} position="relative">
+              {showEmojiPicker && (
+                <Box
+                  position="absolute"
+                  bottom="50px"
+                  left="0"
+                  zIndex="999"
+                >
+                <EmojiPicker onEmojiClick={handleEmojiClick} />
+                </Box>
+              )}
+
+              <IconButton
+                aria-label="Add emoji"
+                bg="gray.200"
+                color="black"
+                _hover={{ bg: "gray.300" }}
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+              >
+                <FaSmile />
+              </IconButton>
+
               <Input
                 bg="gray.200"
                 color="black"

@@ -7,18 +7,23 @@ const ChatProvider = ({ children }) => {
   const navigate = useNavigate();
 
   const [selectedChat, setSelectedChat] = useState(null);
-  const [user, setUser] = useState(() =>
-    JSON.parse(localStorage.getItem("userInfo"))
-  );
+  const [user, setUser] = useState(() => {
+    const userInfo = localStorage.getItem("userInfo");
+    return userInfo ? JSON.parse(userInfo) : null;
+  });
   const [notification, setNotification] = useState([]);
   const [chats, setChats] = useState([]);
 
   useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    const userInfo = localStorage.getItem("userInfo");
 
     if (!userInfo) {
       navigate("/");
+      return;
     }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(JSON.parse(userInfo));
   }, [navigate]);
 
   return (
