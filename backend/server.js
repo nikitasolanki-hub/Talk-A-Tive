@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-
+const path = require("path");
 require("colors");
 
 const userRouter = require("./routes/userRoutes");
@@ -17,9 +17,10 @@ connectDB();
 const app = express();
 
 const allowedOrigins = [
+  "http://localhost:5173",
   "https://talk-a-tive-amber.vercel.app",
   process.env.FRONTEND_URL,
-];
+].filter(Boolean);
 
 app.use(
   cors({
@@ -28,9 +29,10 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"));
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
@@ -47,8 +49,6 @@ app.use("/api/message", messageRoutes);
 
 // -------------------------- deployment --------------------------
 
-const path = require("path");
-
 const __dirnameRoot = path.resolve();
 
 if (process.env.NODE_ENV === "production") {
@@ -63,13 +63,10 @@ if (process.env.NODE_ENV === "production") {
 
     res.sendFile(path.join(frontendPath, "index.html"));
   });
-} else {
-  app.get("/", (req, res) => {
-    res.send("API is running...");
-  });
 }
 
 // -------------------------- deployment --------------------------
+
 app.use(notFound);
 app.use(errorHandler);
 
@@ -82,7 +79,7 @@ const server = app.listen(PORT, () => {
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -130,7 +127,10 @@ io.on("connection", (socket) => {
     chat.users.forEach((chatUser) => {
       if (!chatUser?._id) return;
 
-      if (chatUser._id.toString() === newMessageReceived.sender._id.toString()) {
+      if (
+        chatUser._id.toString() ===
+        newMessageReceived.sender._id.toString()
+      ) {
         return;
       }
 
