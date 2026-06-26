@@ -4,6 +4,10 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ;
+
+
 const Login = () => {
   const navigate = useNavigate();
 
@@ -35,14 +39,10 @@ const Login = () => {
       setLoading(true);
       setMessage("");
 
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/user/login`,
-        {
-          email,
-          password,
-        },
-      );
-
+      const { data } = await axios.post(`${API_BASE_URL}/api/user/login`, {
+        email,
+        password,
+      });
       localStorage.setItem("userInfo", JSON.stringify(data));
 
       setLoading(false);
