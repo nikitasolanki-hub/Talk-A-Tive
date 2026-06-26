@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+
 require("colors");
 
 const userRouter = require("./routes/userRoutes");
@@ -33,6 +34,31 @@ app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRoutes);
 
+// -------------------------- deployment --------------------------
+
+const path = require("path");
+
+const __dirnameRoot = path.resolve();
+
+if (process.env.NODE_ENV === "production") {
+  const frontendPath = path.join(__dirnameRoot, "frontend", "dist");
+
+  app.use(express.static(frontendPath));
+
+  app.use((req, res, next) => {
+    if (req.originalUrl.startsWith("/api")) {
+      return next();
+    }
+
+    res.sendFile(path.join(frontendPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("API is running...");
+  });
+}
+
+// -------------------------- deployment --------------------------
 app.use(notFound);
 app.use(errorHandler);
 
