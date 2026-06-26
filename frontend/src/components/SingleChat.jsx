@@ -14,11 +14,10 @@ import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 import animationData from "../animations/typing.json";
 
-const ENDPOINT =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-  
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  import.meta.env.VITE_API_BASE_URL || "https://talk-a-tive-8412.onrender.com";
+
+const ENDPOINT = API_BASE_URL;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
@@ -43,7 +42,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
         Authorization: `Bearer ${user?.token}`,
       },
     }),
-    [user?.token]
+    [user?.token],
   );
 
   const handleEmojiClick = (emojiData) => {
@@ -75,7 +74,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
       const { data } = await axios.get(
         `${API_BASE_URL}/api/message/${selectedChat._id}`,
-        authConfig
+        authConfig,
       );
 
       setMessages(data);
@@ -85,7 +84,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       }
     } catch (error) {
       setMessageError(
-        error?.response?.data?.message || "Failed to load messages"
+        error?.response?.data?.message || "Failed to load messages",
       );
     } finally {
       setLoading(false);
@@ -125,7 +124,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${user.token}`,
           },
-        }
+        },
       );
 
       if (socketRef.current) {
@@ -136,7 +135,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     } catch (error) {
       setNewMessage(messageToSend);
       setMessageError(
-        error?.response?.data?.message || "Failed to send message"
+        error?.response?.data?.message || "Failed to send message",
       );
     } finally {
       setSendLoading(false);
@@ -180,6 +179,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     console.log("TRYING SOCKET CONNECTION FOR USER:", user._id);
 
     socketRef.current = io(ENDPOINT, {
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -220,7 +220,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       socketRef.current = null;
       setSocketConnected(false);
     };
-  }, [user?._id]);
+ }, [user?._id, user]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -247,7 +247,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       if (!currentChat || currentChat._id !== newMessageReceived.chat._id) {
         setNotification((prevNotifications = []) => {
           const alreadyExists = prevNotifications.some(
-            (notif) => notif._id === newMessageReceived._id
+            (notif) => notif._id === newMessageReceived._id,
           );
 
           if (alreadyExists) return prevNotifications;
@@ -347,19 +347,24 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
             {isTyping && (
               <Box width="70px" mb={2}>
-                <Lottie animationData={animationData} loop={true} autoplay={true} />
+                <Lottie
+                  animationData={animationData}
+                  loop={true}
+                  autoplay={true}
+                />
               </Box>
             )}
 
-            <Box display="flex" alignItems="center" gap={2} mt={3} position="relative">
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={2}
+              mt={3}
+              position="relative"
+            >
               {showEmojiPicker && (
-                <Box
-                  position="absolute"
-                  bottom="50px"
-                  left="0"
-                  zIndex="999"
-                >
-                <EmojiPicker onEmojiClick={handleEmojiClick} />
+                <Box position="absolute" bottom="50px" left="0" zIndex="999">
+                  <EmojiPicker onEmojiClick={handleEmojiClick} />
                 </Box>
               )}
 

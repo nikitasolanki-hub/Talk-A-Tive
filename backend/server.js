@@ -1,7 +1,6 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const path = require("path");
 
 require("colors");
 
@@ -20,28 +19,39 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://talk-a-tive-amber.vercel.app",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+// ---------------- CORS FIX ----------------
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-app.options("*", cors());
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 app.use(express.json());
+
+// ---------------- ROUTES ----------------
 
 app.get("/", (req, res) => {
   res.send("API is running");
@@ -51,8 +61,12 @@ app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRoutes);
 
+// ---------------- ERROR HANDLERS ----------------
+
 app.use(notFound);
 app.use(errorHandler);
+
+// ---------------- SERVER ----------------
 
 const PORT = process.env.PORT || 5000;
 
@@ -84,13 +98,20 @@ io.on("connection", (socket) => {
     console.log("User Joined Room:", room);
   });
 
-  socket.on("typing", (room) => socket.in(room).emit("typing"));
-  socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
+  socket.on("typing", (room) => {
+    socket.in(room).emit("typing");
+  });
+
+  socket.on("stop typing", (room) => {
+    socket.in(room).emit("stop typing");
+  });
 
   socket.on("new message", (newMessageReceived) => {
     const chat = newMessageReceived.chat;
 
-    if (!chat.users) return console.log("chat.users not defined");
+    if (!chat.users) {
+      return console.log("chat.users not defined");
+    }
 
     chat.users.forEach((user) => {
       if (user._id === newMessageReceived.sender._id) return;
