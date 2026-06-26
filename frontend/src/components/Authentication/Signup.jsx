@@ -10,6 +10,9 @@ const DEFAULT_PROFILE_PIC =
 const CLOUDINARY_CLOUD_NAME = "dq17pkuwg";
 const CLOUDINARY_UPLOAD_PRESET = "chat-app";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const Signup = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -58,7 +61,7 @@ const Signup = () => {
         {
           method: "POST",
           body: imageData,
-        }
+        },
       );
 
       const data = await response.json();
@@ -95,7 +98,7 @@ const Signup = () => {
       setLoading(true);
       setMessage("");
 
-      const { data } = await axios.post("http://localhost:5000/api/user", {
+      const { data } = await axios.post(`${API_BASE_URL}/api/user`, {
         name,
         email,
         password,
@@ -107,7 +110,7 @@ const Signup = () => {
       navigate("/chats");
     } catch (error) {
       setMessage(
-        error.response?.data?.message || "Something went wrong during signup"
+        error.response?.data?.message || "Something went wrong during signup",
       );
     } finally {
       setLoading(false);

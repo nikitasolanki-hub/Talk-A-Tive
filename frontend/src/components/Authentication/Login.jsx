@@ -35,10 +35,13 @@ const Login = () => {
       setLoading(true);
       setMessage("");
 
-      const { data } = await axios.post("http://localhost:5000/api/user/login", {
-        email,
-        password,
-      });
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/user/login`,
+        {
+          email,
+          password,
+        },
+      );
 
       localStorage.setItem("userInfo", JSON.stringify(data));
 
@@ -111,7 +114,7 @@ const Login = () => {
             </Box>
           </Box>
         </Box>
-        
+
         <Button
           colorPalette="blue"
           width="100%"

@@ -14,8 +14,11 @@ import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 import animationData from "../animations/typing.json";
 
-const ENDPOINT = "http://localhost:5000";
-const API_BASE_URL = "http://localhost:5000";
+const ENDPOINT =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
