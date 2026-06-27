@@ -1,4 +1,5 @@
 import { Avatar, Box, Text } from "@chakra-ui/react";
+import { useEffect, useRef } from "react";
 import ScrollableFeed from "react-scrollable-feed";
 
 import {
@@ -15,12 +16,48 @@ const DEFAULT_PROFILE_PIC =
 
 const ScrollableChat = ({ messages = [] }) => {
   const { user } = ChatState();
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [messages.length]);
 
   if (!user?._id) return null;
 
   return (
-    <ScrollableFeed>
+    <ScrollableFeed forceScroll={true}>
       {messages.map((message, index) => {
+        if (message.isSystemMessage) {
+          return (
+            <Box
+              key={message._id || index}
+              display="flex"
+              justifyContent="center"
+              width="100%"
+              my={2}
+            >
+              <Text
+                fontSize="xs"
+                color="gray.600"
+                bg="gray.200"
+                px={3}
+                py={1}
+                borderRadius="full"
+                textAlign="center"
+              >
+                {message.content}
+              </Text>
+            </Box>
+          );
+        }
+
         const senderId = message.sender?._id;
         const isOwnMessage = senderId === user._id;
 
@@ -65,11 +102,13 @@ const ScrollableChat = ({ messages = [] }) => {
               wordBreak="break-word"
               whiteSpace="pre-wrap"
             >
-              <Text fontSize="sm">{message.content}</Text>
+              <Text fontSize="sm">{message.content || ""}</Text>
             </Box>
           </Box>
         );
       })}
+
+      <Box ref={bottomRef} height="1px" />
     </ScrollableFeed>
   );
 };

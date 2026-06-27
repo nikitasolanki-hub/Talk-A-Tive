@@ -124,45 +124,29 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
     }
   };
 
-  const handleRemove = async (userToRemove) => {
-    if (
-      selectedChat.groupAdmin._id !== user._id &&
-      userToRemove._id !== user._id
-    ) {
-      showError("Only group admin can remove users");
-      return;
-    }
+const handleRemove = async (userToRemove) => {
+  if (selectedChat.groupAdmin._id !== user._id && userToRemove._id !== user._id) {
+    showError("Only admin can remove someone");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    const { data } = await axios.put(
+      `${API_BASE_URL}/api/chat/groupremove`,
+      {
+        chatId: selectedChat._id,
+        userId: userToRemove._id,
+      },
+      getAuthConfig()
+    );
 
-      const { data } = await axios.put(
-        `${API_BASE_URL}/api/chat/groupremove`,
-        {
-          chatId: selectedChat._id,
-          userId: userToRemove._id,
-        },
-        getAuthConfig()
-      );
-
-      if (userToRemove._id === user._id) {
-        setSelectedChat(null);
-        setOpen(false);
-      } else {
-        setSelectedChat(data);
-      }
-
-      setFetchAgain(!fetchAgain);
-
-      if (fetchMessages) {
-        fetchMessages();
-      }
-    } catch (error) {
-      showError(error?.response?.data?.message || "Failed to remove user");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setSelectedChat(data.updatedChat);
+    setFetchAgain((prev) => !prev);
+    fetchMessages();
+  } catch (error) {
+    showError(error?.response?.data?.message || "Failed to remove user");
+  }
+};
 
   if (!selectedChat) return null;
 

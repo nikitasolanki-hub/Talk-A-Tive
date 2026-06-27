@@ -7,17 +7,20 @@ import { io } from "socket.io-client";
 import Lottie from "lottie-react";
 import EmojiPicker from "emoji-picker-react";
 
+import animationData from "../animations/typing.json";
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-import animationData from "../animations/typing.json";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://talk-a-tive-8412.onrender.com";
 
 const ENDPOINT = API_BASE_URL;
+
+const LottiePlayer = Lottie?.default || Lottie;
+const EmojiPickerComponent = EmojiPicker?.default || EmojiPicker;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
@@ -45,9 +48,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     [user?.token],
   );
 
-  const handleEmojiClick = (emojiData) => {
-    setNewMessage((prev) => prev + emojiData.emoji);
-
+  const startTyping = () => {
     if (!socketConnected || !selectedChat?._id || !socketRef.current) return;
 
     if (!typing) {
@@ -63,6 +64,15 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       socketRef.current?.emit("stop typing", selectedChat._id);
       setTyping(false);
     }, 3000);
+  };
+
+  const handleEmojiClick = (emojiData) => {
+    const selectedEmoji = emojiData?.emoji || "";
+
+    if (!selectedEmoji) return;
+
+    setNewMessage((prev) => prev + selectedEmoji);
+    startTyping();
   };
 
   const fetchMessages = async () => {
@@ -150,24 +160,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   };
 
   const typingHandler = (event) => {
-    const value = event.target.value;
-    setNewMessage(value);
-
-    if (!socketConnected || !selectedChat?._id || !socketRef.current) return;
-
-    if (!typing) {
-      setTyping(true);
-      socketRef.current.emit("typing", selectedChat._id);
-    }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      socketRef.current?.emit("stop typing", selectedChat._id);
-      setTyping(false);
-    }, 3000);
+    setNewMessage(event.target.value);
+    startTyping();
   };
 
   useEffect(() => {
@@ -188,7 +182,6 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
     socketRef.current.on("connect", () => {
       console.log("FRONTEND SOCKET CONNECTED:", socketRef.current.id);
-
       socketRef.current.emit("setup", user);
     });
 
@@ -220,7 +213,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       socketRef.current = null;
       setSocketConnected(false);
     };
- }, [user?._id, user]);
+  }, [user?._id]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -340,14 +333,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 color="blue.500"
               />
             ) : (
-              <Box className="messages" overflowY="auto">
+              <Box className="messages" flex="1" overflowY="auto">
                 <ScrollableChat messages={messages} />
               </Box>
             )}
 
             {isTyping && (
               <Box width="70px" mb={2}>
-                <Lottie
+                <LottiePlayer
                   animationData={animationData}
                   loop={true}
                   autoplay={true}
@@ -364,7 +357,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             >
               {showEmojiPicker && (
                 <Box position="absolute" bottom="50px" left="0" zIndex="999">
-                  <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  <EmojiPickerComponent onEmojiClick={handleEmojiClick} />
                 </Box>
               )}
 
