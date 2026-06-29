@@ -1,8 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-
-require("colors");
+const color = require("colors");
 
 const userRouter = require("./routes/userRoutes");
 const chatRouter = require("./routes/chatRoutes");
@@ -16,61 +15,44 @@ connectDB();
 
 const app = express();
 
+// Allowed Frontend URLs
 const allowedOrigins = [
-  "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app",
   "http://localhost:5173",
-  "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app/",
+  "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app",
 ];
 
-// ---------------- CORS FIX ----------------
+// CORS Middleware
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-// app.use((req, res, next) => {
-//   const origin = req.headers.origin;
-
-//   if (allowedOrigins.includes(origin)) {
-//     res.setHeader("Access-Control-Allow-Origin", origin);
-//   }
-
-//   res.setHeader(
-//     "Access-Control-Allow-Methods",
-//     "GET, POST, PUT, DELETE, OPTIONS"
-//   );
-
-//   res.setHeader(
-//     "Access-Control-Allow-Headers",
-//     "Content-Type, Authorization"
-//   );
-
-//   res.setHeader("Access-Control-Allow-Credentials", "true");
-
-//   if (req.method === "OPTIONS") {
-//     return res.sendStatus(204);
-//   }
-
-//   next();
-// });
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// ---------------- ROUTES ----------------
 
 app.get("/", (req, res) => {
   res.send("API is running");
 });
-app.use(cors({
-  origin : allowedOrigins,
-methods : ['GET', 'POST', 'PATCH', 'DELETE', 'PUT']
-}))
+
 app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRoutes);
 
-// ---------------- ERROR HANDLERS ----------------
-
 app.use(notFound);
 app.use(errorHandler);
-
-// ---------------- SERVER ----------------
 
 const PORT = process.env.PORT || 5000;
 
@@ -78,14 +60,13 @@ const server = app.listen(PORT, () => {
   console.log(`Server Started on Port ${PORT}`.yellow.bold);
 });
 
-// ---------------- SOCKET.IO ----------------
-
+// Socket.io
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"],
     credentials: true,
+    methods: ["GET", "POST"],
   },
 });
 
