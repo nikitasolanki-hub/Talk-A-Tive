@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://talk-a-tive-8412.onrender.com";
+  import.meta.env.VITE_API_BASE_URL || "https://talk-a-tive-84l2.onrender.com/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const Login = () => {
       setLoading(true);
       setMessage("");
 
-      console.log("LOGIN API URL:", `${API_BASE_URL}/api/user/login`);
+      console.log("LOGIN API URL:", `${API_BASE_URL}/user/login`);
 
       const config = {
         headers: {
@@ -47,7 +47,7 @@ const Login = () => {
       };
 
       const { data } = await axios.post(
-        `${API_BASE_URL}/api/user/login`,
+        `${API_BASE_URL}/user/login`,
         {
           email,
           password,

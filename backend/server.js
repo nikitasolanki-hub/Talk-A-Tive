@@ -18,7 +18,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://talk-a-tive-amber.vercel.app",
+  "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app/",
 ];
 
 // ---------------- CORS FIX ----------------
