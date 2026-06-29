@@ -171,9 +171,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     }
 
     console.log("TRYING SOCKET CONNECTION FOR USER:", user._id);
-
+    
     socketRef.current = io(ENDPOINT, {
-      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

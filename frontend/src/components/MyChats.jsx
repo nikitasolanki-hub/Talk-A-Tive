@@ -8,6 +8,9 @@ import ChatLoading from "./ChatLoading";
 import GroupChatModal from "./miscellaneous/GroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const MyChats = ({ fetchAgain }) => {
   const [loggedUser, setLoggedUser] = useState(null);
   const [message, setMessage] = useState("");
@@ -34,10 +37,7 @@ const MyChats = ({ fetchAgain }) => {
         },
       };
 
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/chat`,
-        config
-      );
+   const { data } = await axios.get(`${API_BASE_URL}/api/chat`, config);
 
       setChats(data);
     } catch (error) {
