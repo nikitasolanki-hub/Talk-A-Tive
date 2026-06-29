@@ -15,7 +15,6 @@ connectDB();
 
 const app = express();
 
-// Allowed Frontend URLs
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
 
@@ -28,6 +27,26 @@ const isAllowedOrigin = (origin) => {
 
   return allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
 };
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (isAllowedOrigin(origin)) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    );
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Vary", "Origin");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -45,15 +64,15 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use((req, res, next) => {
-  res.header("Vary", "Origin");
+// app.use((req, res, next) => {
+//   res.header("Vary", "Origin");
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
+//   if (req.method === "OPTIONS") {
+//     return res.sendStatus(204);
+//   }
 
-  next();
-});
+//   next();
+// });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -61,6 +80,16 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("API is running");
 });
+
+app.get("/debug-version", (req, res) => {
+  res.json({
+    version: "cors-socket-fix-v4",
+    time: new Date().toISOString(),
+    origin: req.headers.origin || null,
+    frontendUrl: process.env.FRONTEND_URL || null,
+  });
+});
+
 
 app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
@@ -74,8 +103,7 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`Server Started on Port ${PORT}`.yellow.bold);
 });
-
-// Socket.io
+//..................................................Socket.io.....................................................................
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
@@ -131,8 +159,7 @@ io.on("connection", (socket) => {
       if (!chatUser?._id) return;
 
       if (
-        chatUser._id.toString() ===
-        newMessageReceived.sender._id.toString()
+        chatUser._id.toString() === newMessageReceived.sender._id.toString()
       ) {
         return;
       }
