@@ -83,7 +83,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       setMessageError("");
 
       const { data } = await axios.get(
-        `${API_BASE_URL}/api/message/${selectedChat._id}`,
+        `${API_BASE_URL}/message/${selectedChat._id}`,
         authConfig,
       );
 
@@ -124,7 +124,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       }
 
       const { data } = await axios.post(
-        `${API_BASE_URL}/api/message`,
+        `${API_BASE_URL}/message`,
         {
           content: messageToSend,
           chatId: selectedChat._id,
@@ -171,7 +171,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     }
 
     console.log("TRYING SOCKET CONNECTION FOR USER:", user._id);
-    
+
     socketRef.current = io(ENDPOINT, {
       reconnection: true,
       reconnectionAttempts: 5,
