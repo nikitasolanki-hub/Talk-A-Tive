@@ -16,26 +16,40 @@ connectDB();
 const app = express();
 
 // Allowed Frontend URLs
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app",
-];
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
 
-// CORS Middleware
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "https://talk-a-tive-amber.vercel.app",
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
+  return allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
+};
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 // Handle preflight requests
 // app.options("*", cors());
@@ -64,7 +78,13 @@ const server = app.listen(PORT, () => {
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Socket CORS blocked: ${origin}`));
+    },
     credentials: true,
     methods: ["GET", "POST"],
   },
