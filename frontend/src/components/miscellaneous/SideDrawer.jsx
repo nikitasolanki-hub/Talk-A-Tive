@@ -74,7 +74,7 @@ const SideDrawer = () => {
       };
 
       const { data } = await axios.get(
-        `${API_BASE_URL}/api/user?search=${search}`,
+        `${API_BASE_URL}/user?search=${search}`,
         config
       );
 
