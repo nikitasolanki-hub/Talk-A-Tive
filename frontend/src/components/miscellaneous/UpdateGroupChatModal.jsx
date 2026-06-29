@@ -72,7 +72,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
       setRenameLoading(true);
 
       const { data } = await axios.put(
-        `${API_BASE_URL}/api/chat/rename`,
+        `${API_BASE_URL}/chat/rename`,
         {
           chatId: selectedChat._id,
           chatName: groupChatName,
@@ -105,7 +105,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
       setLoading(true);
 
       const { data } = await axios.put(
-        `${API_BASE_URL}/api/chat/groupadd`,
+        `${API_BASE_URL}/chat/groupadd`,
         {
           chatId: selectedChat._id,
           userId: userToAdd._id,
@@ -132,7 +132,7 @@ const handleRemove = async (userToRemove) => {
 
   try {
     const { data } = await axios.put(
-      `${API_BASE_URL}/api/chat/groupremove`,
+      `${API_BASE_URL}/chat/groupremove`,
       {
         chatId: selectedChat._id,
         userId: userToRemove._id,
