@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const color = require("colors");
+require("colors");
 
 const userRouter = require("./routes/userRoutes");
 const chatRouter = require("./routes/chatRoutes");
@@ -21,7 +21,8 @@ const isAllowedOrigin = (origin) => {
 
   const allowedOrigins = [
     "http://localhost:5173",
-    "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app/",
+    "https://talk-a-tive-amber.vercel.app",
+    "https://talk-a-tive-hzrsd02oo-nikitasolanki-5851s-projects.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 
@@ -39,20 +40,20 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
 
 app.use((req, res, next) => {
+  res.header("Vary", "Origin");
+
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
 
   next();
 });
-
-// Handle preflight requests
-// app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -91,37 +92,56 @@ const io = require("socket.io")(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("Connected to socket.io");
+  console.log("Connected to socket.io:", socket.id);
 
   socket.on("setup", (userData) => {
+    if (!userData?._id) return;
+
     socket.join(userData._id);
     socket.emit("connected");
   });
 
   socket.on("join chat", (room) => {
+    if (!room) return;
+
     socket.join(room);
     console.log("User Joined Room:", room);
   });
 
   socket.on("typing", (room) => {
+    if (!room) return;
+
     socket.in(room).emit("typing");
   });
 
   socket.on("stop typing", (room) => {
+    if (!room) return;
+
     socket.in(room).emit("stop typing");
   });
 
   socket.on("new message", (newMessageReceived) => {
-    const chat = newMessageReceived.chat;
+    const chat = newMessageReceived?.chat;
 
-    if (!chat.users) {
+    if (!chat?.users) {
       return console.log("chat.users not defined");
     }
 
-    chat.users.forEach((user) => {
-      if (user._id === newMessageReceived.sender._id) return;
+    chat.users.forEach((chatUser) => {
+      if (!chatUser?._id) return;
 
-      socket.in(user._id).emit("message received", newMessageReceived);
+      if (
+        chatUser._id.toString() ===
+        newMessageReceived.sender._id.toString()
+      ) {
+        return;
+      }
+
+      socket.in(chatUser._id).emit("message received", newMessageReceived);
     });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
   });
 });
