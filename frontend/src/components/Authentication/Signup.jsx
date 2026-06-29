@@ -98,7 +98,7 @@ const Signup = () => {
       setLoading(true);
       setMessage("");
 
-      const { data } = await axios.post(`${API_BASE_URL}/api/user`, {
+      const { data } = await axios.post(`${API_BASE_URL}/user`, {
         name,
         email,
         password,
